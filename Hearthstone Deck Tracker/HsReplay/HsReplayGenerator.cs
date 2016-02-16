@@ -26,7 +26,7 @@ namespace Hearthstone_Deck_Tracker.HsReplay
 					new XmlMetaData("x-gameid", Core.Game?.MetaData?.GameId)
 				};
 
-		public static async Task Generate(List<string> log)
+		public static async Task<string> Generate(List<string> log)
 		{
 			Directory.CreateDirectory(HsReplayPath);
 			Directory.CreateDirectory(TmpDirPath);
@@ -44,6 +44,7 @@ namespace Hearthstone_Deck_Tracker.HsReplay
 
 			AddMetaData(HsReplayOutput, MetaData);
 			File.Delete(TmpFilePath);
+			return HsReplayOutput;
 		}
 
 		private static void RunExe()

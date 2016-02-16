@@ -149,7 +149,7 @@ namespace Hearthstone_Deck_Tracker
 			   && _game.CurrentGameStats.ReplayFile == null && RecordCurrentGameMode)
 				_game.CurrentGameStats.ReplayFile = ReplayMaker.SaveToDisk();
 
-			HsReplayUploader.UploadRawPowerLog(_game.PowerLog);
+			UploadHsReplay();
 
 			SaveAndUpdateStats();
 
@@ -185,6 +185,12 @@ namespace Hearthstone_Deck_Tracker
 			if(_game.CurrentGameMode == Spectator)
 				SetGameMode(None);
 			GameEvents.OnInMenu.Execute();
+		}
+
+		private async void UploadHsReplay()
+		{
+			var file = await HsReplayGenerator.Generate(_game.PowerLog);
+			await HsReplayUploader.UploadXml(file);
 		}
 
 		public void HandleConcede()
