@@ -3,7 +3,10 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
+using System.Net;
+using System.Threading.Tasks;
 using System.Xml.Linq;
 using static Hearthstone_Deck_Tracker.HsReplay.HsReplayConstants;
 
@@ -17,19 +20,19 @@ namespace Hearthstone_Deck_Tracker.HsReplay
 			=>
 				new[]
 				{
-					new XmlMetaData("x-address", Core.Game.MetaData.ServerAddress),
-					new XmlMetaData("x-clientid", Core.Game.MetaData.ClientId),
-					new XmlMetaData("x-spectateKey", Core.Game.MetaData.SpectateKey),
-					new XmlMetaData("x-gameid", Core.Game.MetaData.GameId)
+					new XmlMetaData("x-address", Core.Game?.MetaData?.ServerAddress),
+					new XmlMetaData("x-clientid", Core.Game?.MetaData?.ClientId),
+					new XmlMetaData("x-spectateKey", Core.Game?.MetaData?.SpectateKey),
+					new XmlMetaData("x-gameid", Core.Game?.MetaData?.GameId)
 				};
 
-		public static void Generate(List<string> log)
+		public static async Task Generate(List<string> log)
 		{
 			Directory.CreateDirectory(HsReplayPath);
 			Directory.CreateDirectory(TmpDirPath);
 
 			if(!File.Exists(HsReplayExe) || CheckForUpdate())
-				Update();
+				await Update();
 
 			using(var sw = new StreamWriter(TmpFilePath))
 			{
@@ -40,8 +43,7 @@ namespace Hearthstone_Deck_Tracker.HsReplay
 			RunExe();
 
 			AddMetaData(HsReplayOutput, MetaData);
-
-			//TODO: Cleanup
+			File.Delete(TmpFilePath);
 		}
 
 		private static void RunExe()
@@ -60,7 +62,7 @@ namespace Hearthstone_Deck_Tracker.HsReplay
 			proc?.WaitForExit();
 		}
 
-		public static void AddMetaData(string xmlFile, XmlMetaData[] metaData)
+		private static void AddMetaData(string xmlFile, XmlMetaData[] metaData)
 		{
 			var xml = XDocument.Load(xmlFile);
 			var game = xml.Elements().FirstOrDefault(x => x.Name == "HSReplay")?.Elements().FirstOrDefault(x => x.Name == "Game");
@@ -69,9 +71,20 @@ namespace Hearthstone_Deck_Tracker.HsReplay
 			xml.Save(xmlFile);
 		}
 
-		private static void Update()
+		private static async Task Update()
 		{
-			//TODO
+			var version = "1.0";
+			var zipPath = string.Format(ZipFilePath, version);
+			Logger.WriteLine($"Downloading hsreplay converter version {version}...", "HsReplay");
+			using(var wc = new WebClient())
+				await wc.DownloadFileTaskAsync(string.Format(DownloadUrl, version), zipPath);
+			Logger.WriteLine("Finished downloading. Unpacking...", "HsReplay");
+			using(var fs = new FileInfo(zipPath).OpenRead())
+			{
+				var archive = new ZipArchive(fs, ZipArchiveMode.Read);
+				archive.ExtractToDirectory(HsReplayPath, true);
+			}
+			File.Delete(zipPath);
 		}
 
 		private static bool CheckForUpdate()
